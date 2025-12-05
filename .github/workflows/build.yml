@@ -1,0 +1,37 @@
+name: Build NetGuard App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    # 1. משיכת הקוד
+    - uses: actions/checkout@v3
+
+    # 2. התקנת Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' 
+
+    # 3. התקנת המקמפל (PyInstaller)
+    - name: Install Dependencies
+      run: |
+        pip install pyinstaller
+
+    # 4. ביצוע הקימפול
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --clean --onefile --windowed --icon=2.icns --name="NetGuard" Install_Net_Block.py
+
+    # 5. שמירת הקובץ להורדה
+    - name: Upload App
+      uses: actions/upload-artifact@v4
+      with:
+        name: NetGuard-App
+        path: dist/NetGuard.app
