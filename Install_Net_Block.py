@@ -8,11 +8,11 @@ import json
 import shutil
 import time
 
-# --- מפתח סודי ---
+# --- Secret Key ---
 SECRET_SALT = "GhostSystemKey2025"
 
 # ==========================================
-# תצורת הרשת (Ghost Network) - User Level Agents
+# GHOST NETWORK CONFIGURATION
 # ==========================================
 GHOST_NETWORK = [
     {
@@ -54,7 +54,7 @@ GHOST_NETWORK = [
 ]
 
 # ==========================================
-# תצורת ה-Daemons (Root Level) - ה"שוטרים" (5 יחידות)
+# ROOT DAEMONS CONFIGURATION (5 Units)
 # ==========================================
 ROOT_DAEMON_NETWORK = [
     {
@@ -93,7 +93,7 @@ NETWORK_JSON = json.dumps(GHOST_NETWORK)
 ROOT_NETWORK_JSON = json.dumps(ROOT_DAEMON_NETWORK)
 
 # ==========================================
-# 1. המנוע הראשי (Net Blocker + Settings Guard)
+# 1. MAIN ENGINE (Logic in pure ASCII/Unicode)
 # ==========================================
 BLOCKER_LOGIC = r"""
 import subprocess
@@ -103,36 +103,40 @@ import json
 
 NETWORK_CONFIG = __NETWORK_CONFIG_PLACEHOLDER__
 
-# רשימת מילים אסורות בהגדרות (עברית ואנגלית)
+# Blacklist words for Settings (English + Hebrew Unicode Escapes)
+# Hebrew is encoded to avoid non-ascii characters in this block.
+# \u05e8\u05e9\u05ea = Reshet (Network)
+# \u05d7\u05d5\u05de\u05ea \u05d0\u05e9 = Homat Esh (Firewall)
+# \u05e4\u05e8\u05d9\u05d8\u05d9 \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea = Pritei Hithabrut (Login Items)
+# \u05d4\u05e8\u05d7\u05d1\u05d5\u05ea = Harhavot (Extensions)
+# \u05ea\u05e6\u05d5\u05d2\u05d4 = Tzuga (Displays)
+# \u05d0\u05d9\u05e0\u05d8\u05e8\u05e0\u05d8 \u05d0\u05dc\u05d7\u05d5\u05d8\u05d9 = Internet Alhuti (Wi-Fi)
+
 SETTINGS_BLACKLIST = [
-    "Network", "רשת",
-    "Firewall", "חומת אש",
-    "Login Items", "פריטי התחברות",
-    "Extensions", "הרחבות",
-    "Displays", "תצוגה",
-    "Wi-Fi", "אינטרנט אלחוטי",
+    "Network", "\u05e8\u05e9\u05ea",
+    "Firewall", "\u05d7\u05d5\u05de\u05ea \u05d0\u05e9",
+    "Login Items", "\u05e4\u05e8\u05d9\u05d8\u05d9 \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea",
+    "Extensions", "\u05d4\u05e8\u05d7\u05d1\u05d5\u05ea",
+    "Displays", "\u05ea\u05e6\u05d5\u05d2\u05d4",
+    "Wi-Fi", "\u05d0\u05d9\u05e0\u05d8\u05e8\u05e0\u05d8 \u05d0\u05dc\u05d7\u05d5\u05d8\u05d9",
     "VPN"
 ]
 
 def enforce_internet_block():
-    """חסימת אינטרנט הרמטית באמצעות Packet Filter"""
+    # Enforces PF packet filter to drop all
     try:
-        # חסימת הכל (Drop All)
         cmd = 'echo "block drop quick all" | pfctl -f -'
         subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL)
-        
-        # הפעלת הפילטר
         subprocess.run('pfctl -e', shell=True, stderr=subprocess.DEVNULL)
     except: 
         pass
 
 def protect_system_settings():
-    """זיהוי וסגירה של לשוניות הגדרות רגישות"""
+    # AppleScript to check System Settings windows
     check_script = '''
     tell application "System Events"
         if exists process "System Settings" then
             tell process "System Settings"
-                -- קבלת רשימת החלונות והכותרות הפעילות
                 set winList to name of every window
                 try
                     set currentAnchor to name of current pane
@@ -147,13 +151,11 @@ def protect_system_settings():
     end tell
     '''
     try:
-        # הרצת AppleScript לבדיקת החלונות
         result = subprocess.check_output(['osascript', '-e', check_script], stderr=subprocess.DEVNULL).decode().strip()
         
         if result == "NOT_RUNNING":
             return
 
-        # בדיקה האם אחת המילים האסורות מופיעה בכותרת החלון
         should_kill = False
         for term in SETTINGS_BLACKLIST:
             if term in result:
@@ -161,9 +163,7 @@ def protect_system_settings():
                 break
         
         if should_kill:
-            # סגירה אלימה של ההגדרות
             subprocess.run("killall 'System Settings'", shell=True, stderr=subprocess.DEVNULL)
-            # אכיפה חוזרת של חסימת האינטרנט ליתר ביטחון
             enforce_internet_block()
     except: pass
 
@@ -174,22 +174,15 @@ def ensure_first_watcher():
             subprocess.run(f"launchctl bootstrap gui/$(id -u) {watcher_1['plist_path']}", shell=True, stderr=subprocess.DEVNULL)
         except: pass
 
-# --- לולאה ראשית ---
 while True:
-    # 1. חסימת אינטרנט קבועה
     enforce_internet_block()
-    
-    # 2. שמירה על ההגדרות (מניעת גישה לרשת/הסרה)
     protect_system_settings()
-    
-    # 3. וידאו שהחבר הבא ברשת קיים
     ensure_first_watcher()
-    
-    time.sleep(1) # בדיקה כל שנייה
+    time.sleep(1)
 """
 
 # ==========================================
-# 2. קוד ה-Watcher (שומרים ברמת משתמש)
+# 2. WATCHER TEMPLATE (User Level)
 # ==========================================
 WATCHER_TEMPLATE = """
 import subprocess
@@ -266,7 +259,7 @@ if __name__ == "__main__":
 """
 
 # ==========================================
-# 3. קוד ה-Enforcer (ה-Daemon שרץ כ-Root)
+# 3. ENFORCER LOGIC (Root Level)
 # ==========================================
 ENFORCER_LOGIC = r"""
 import subprocess
@@ -372,7 +365,6 @@ def enforce_user_agents():
             try: subprocess.run(f"chmod 755 '{node['path']}'", shell=True)
             except: pass
             
-    # Root Enforcer also applies Internet Block as Backup
     try:
         subprocess.run('echo "block drop quick all" | pfctl -f -', shell=True, stderr=subprocess.DEVNULL)
         subprocess.run('pfctl -e', shell=True, stderr=subprocess.DEVNULL)
@@ -386,7 +378,7 @@ while True:
 """
 
 # ==========================================
-# לוגיקת הרצה: Staging & Installation
+# INSTALLER & STAGING LOGIC
 # ==========================================
 
 def run_admin_shell_script(script_content):
@@ -445,8 +437,18 @@ def calculate_unlock_code(challenge_str):
     return hash_obj.hexdigest()[:6]
 
 def ask_unlock_code_native(challenge_code):
-    prompt_text = f":קוד מערכת {challenge_code}\\n\\n:לשחרור החסימה הכנס קוד נגדי"
-    script = f'''set theResponse to display dialog "{prompt_text}" default answer "" with title "הסרה בטוחה" buttons {{"ביטול", "אישור"}} default button "אישור" with icon note
+    # Prompt text in Unicode Escapes for safety within subprocess
+    # \u05e7\u05d5\u05d3 \u05de\u05e2\u05e8\u05db\u05ea = System Code
+    # \u05dc\u05e9\u05d7\u05e8\u05d5\u05e8... = To unlock...
+    # \u05d4\u05e1\u05e8\u05d4 \u05d1\u05d8\u05d5\u05d7\u05d4 = Safe Removal
+    # \u05d1\u05d9\u05d8\u05d5\u05dc = Cancel, \u05d0\u05d9\u05e9\u05d5\u05e8 = OK
+    
+    prompt_text = f":\u05e7\u05d5\u05d3 \u05de\u05e2\u05e8\u05db\u05ea {challenge_code}\\n\\n:\u05dc\u05e9\u05d7\u05e8\u05d5\u05e8 \u05d4\u05d7\u05e1\u05d9\u05de\u05d4 \u05d4\u05db\u05e0\u05e1 \u05e7\u05d5\u05d3 \u05e0\u05d2\u05d3\u05d9"
+    title_text = "\u05d4\u05e1\u05e8\u05d4 \u05d1\u05d8\u05d5\u05d7\u05d4"
+    btn_cancel = "\u05d1\u05d9\u05d8\u05d5\u05dc"
+    btn_ok = "\u05d0\u05d9\u05e9\u05d5\u05e8"
+    
+    script = f'''set theResponse to display dialog "{prompt_text}" default answer "" with title "{title_text}" buttons {{"{btn_cancel}", "{btn_ok}"}} default button "{btn_ok}" with icon note
     return text returned of theResponse'''
     
     try:
@@ -479,14 +481,14 @@ def install():
     blocker_repr = repr(BLOCKER_LOGIC)
     enforcer_repr = repr(ENFORCER_LOGIC)
 
-    # 1. יצירת ה-Blocker הראשי
+    # 1. Main Blocker
     main_node = GHOST_NETWORK[0]
     with open(f"{staging_dir}/node_0.py", "w") as f:
         f.write(final_blocker_code)
     with open(f"{staging_dir}/node_0.plist", "w") as f:
         f.write(create_plist_str_agent(main_node['label'], main_node['path']))
 
-    # 2. יצירת ה-Watchers (User Agents)
+    # 2. Watchers (User Agents)
     for i in range(1, 6):
         node = GHOST_NETWORK[i]
         code = WATCHER_TEMPLATE.replace("__MY_ID_PLACEHOLDER__", str(node['id']))
@@ -499,7 +501,7 @@ def install():
         with open(f"{staging_dir}/node_{i}.plist", "w") as f:
             f.write(create_plist_str_agent(node['label'], node['path']))
 
-    # 3. יצירת ה-Enforcers (5 Root Daemons)
+    # 3. Enforcers (5 Root Daemons)
     for i in range(5):
         d_node = ROOT_DAEMON_NETWORK[i]
         code = ENFORCER_LOGIC.replace("__MY_ID_PLACEHOLDER__", str(d_node['id']))
@@ -512,14 +514,14 @@ def install():
         with open(f"{staging_dir}/root_{i}.plist", "w") as f:
             f.write(create_plist_str_daemon(d_node['label'], d_node['path']))
 
-    # סקריפט ההתקנה (Bash)
+    # Installer Script
     bash_script = "#!/bin/bash\n"
     bash_script += f"STAGING='{staging_dir}'\n"
     bash_script += "tmutil deletelocalsnapshots / || true\n"
     bash_script += "TARGET_USER=$(logname)\n"
     bash_script += "TARGET_UID=$(id -u $TARGET_USER)\n"
 
-    # התקנת ה-Agents (User)
+    # Install Agents
     for i, node in enumerate(GHOST_NETWORK):
         folder = os.path.dirname(node['path'])
         bash_script += f"mkdir -p '{folder}'\n"
@@ -536,7 +538,7 @@ def install():
         bash_script += f"chflags schg '{node['path']}'\n"
         bash_script += f"chflags schg '{node['plist_path']}'\n"
 
-    # התקנת ה-Enforcers (Root Daemons - Loop 5)
+    # Install Enforcers
     for i, d_node in enumerate(ROOT_DAEMON_NETWORK):
         daemon_folder = os.path.dirname(d_node['path'])
         bash_script += f"mkdir -p '{daemon_folder}'\n"
@@ -552,7 +554,7 @@ def install():
 
     bash_script += f"rm -rf {staging_dir}\n"
     
-    # הפעלת חסימת אינטרנט מיידית בסיום ההתקנה
+    # Activate Internet Block
     bash_script += 'echo "block drop quick all" | pfctl -f -\n'
     bash_script += 'pfctl -e\n'
 
@@ -577,7 +579,6 @@ def uninstall():
         bash_script += "TARGET_USER=$(logname)\n"
         bash_script += "TARGET_UID=$(id -u $TARGET_USER)\n"
         
-        # 1. הסרת כל ה-Daemons (Root)
         for d_node in ROOT_DAEMON_NETWORK:
             bash_script += f"launchctl bootout system '{d_node['plist_path']}' 2>/dev/null || true\n"
             bash_script += f"chflags noschg '{d_node['path']}'\n"
@@ -585,28 +586,18 @@ def uninstall():
             bash_script += f"rm -f '{d_node['path']}'\n"
             bash_script += f"rm -f '{d_node['plist_path']}'\n"
         
-        # 2. הסרת ה-Agents (User)
         for node in GHOST_NETWORK:
             bash_script += f"launchctl bootout gui/$TARGET_UID '{node['plist_path']}' 2>/dev/null || true\n"
-            
-        for node in GHOST_NETWORK:
             bash_script += f"pkill -9 -f '{node['path']}'\n"
-
-        for node in GHOST_NETWORK:
             bash_script += f"chflags noschg '{node['path']}'\n"
             bash_script += f"chflags noschg '{node['plist_path']}'\n"
-            
-        for node in GHOST_NETWORK:
             bash_script += f"rm -f '{node['path']}'\n"
             bash_script += f"rm -f '{node['plist_path']}'\n"
             folder = os.path.dirname(node['path'])
             bash_script += f"rmdir '{folder}' 2>/dev/null || true\n"
 
-        # 3. שחרור חסימת האינטרנט
         bash_script += "pfctl -F all\n"
         bash_script += "pfctl -d\n"
-
-        bash_script += 'echo "--- SYSTEM CLEANED & UNBLOCKED ---"'
 
         try:
             run_admin_shell_script(bash_script)
@@ -622,7 +613,7 @@ root.title("Secure Net Blocker V9")
 root.geometry("450x450")
 
 tk.Label(root, text="Secure Net Guard V9", font=("Helvetica", 18, "bold")).pack(pady=10)
-tk.Label(root, text="Only Internet & Settings (No Video Block)", font=("Helvetica", 10, "italic")).pack()
+tk.Label(root, text="חסימת אינטרנט והגדרות רשת (ללא וידאו)", font=("Helvetica", 10)).pack()
 
 warning_frame = tk.Frame(root, highlightbackground="red", highlightthickness=2, bd=0, padx=10, pady=10, bg="#fff5f5")
 warning_frame.pack(pady=15, padx=20, fill="x")
@@ -630,12 +621,11 @@ warning_frame.pack(pady=15, padx=20, fill="x")
 lbl_warn_title = tk.Label(warning_frame, text="⚠️ אזהרה: ניתוק אינטרנט מלא ⚠️", font=("Arial", 12, "bold"), fg="red", bg="#fff5f5")
 lbl_warn_title.pack(anchor="center")
 
-warning_text = (
-    "תוכנה זו מנתקת את האינטרנט לחלוטין.\n"
-    "בנוסף, נחסמת הגישה להגדרות רשת/התחברות.\n"
-    "המערכת מוגנת מפני מחיקה (Ghost Protection).\n"
-    "ההתקנה והשימוש הם באחריותך הבלעדית."
-)
+warning_text = "תוכנה זו מנתקת את האינטרנט לחלוטין.\n" \
+               "בנוסף, נחסמת הגישה להגדרות רשת/התחברות.\n" \
+               "המערכת מוגנת מפני מחיקה (Ghost Protection).\n" \
+               "ההתקנה והשימוש הם באחריותך הבלעדית."
+
 lbl_warn_body = tk.Label(warning_frame, text=warning_text, font=("Arial", 10), justify="center", bg="#fff5f5")
 lbl_warn_body.pack(pady=5)
 
